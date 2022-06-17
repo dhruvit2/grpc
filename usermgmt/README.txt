@@ -10,3 +10,6 @@ go install google.golang.org/grpc/cmd/protoc-gen-go-grpc
 The .proto file is kept in root folder for same reason.
 protoc --go-grpc_out=. ./usermgmt.proto --go_out=. ./usermgmt.proto
 
+To run the client and server
+go run server.go
+go run client.go
