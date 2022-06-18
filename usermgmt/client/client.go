@@ -4,6 +4,8 @@ import (
 	"log"
 	"context"
 	"time"
+	"fmt"
+	"io"
 
 	pb "github.com/dhruvit2/usermgmt/usermgmt"
 	"google.golang.org/grpc"
@@ -23,7 +25,7 @@ func main() {
 	defer conn.Close()
 	client := pb.NewUserManagementClient(conn)
 
-	ctx, cancel := context.WithTimeout(context.Background(), time.Second)
+	ctx, cancel := context.WithTimeout(context.Background(), time.Second*20)
 	defer cancel()
 
 	var newUser = make(map[string]int32)
@@ -39,4 +41,22 @@ func main() {
 		log.Printf("User details Name %v Age %v Id %v \n", user.GetName(), user.GetAge(), user.GetId())
 	}
 
+	resStream, err := client.GreetUser(ctx, &pb.NewUser{Name: "ser strea", Age:67})
+	if err != nil {
+		log.Fatalf("error while calling GreetManyTimes RPC: %v", err)
+	}
+
+	for {
+		msg, err := resStream.Recv()
+		if err == io.EOF {
+			// we've reached the end of the stream
+			break
+		}
+
+		if err != nil {
+			log.Fatalf("error while reading stream: %v", err)
+		}
+
+		fmt.Printf("Response from GreetManyTimes: %v\n", msg.GetResult())
+	}
 }

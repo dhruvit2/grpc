@@ -23,6 +23,7 @@ const _ = grpc.SupportPackageIsVersion7
 // For semantics around ctx use and closing/ending streaming RPCs, please refer to https://pkg.go.dev/google.golang.org/grpc/?tab=doc#ClientConn.NewStream.
 type UserManagementClient interface {
 	CreateNewUser(ctx context.Context, in *NewUser, opts ...grpc.CallOption) (*User, error)
+	GreetUser(ctx context.Context, in *NewUser, opts ...grpc.CallOption) (UserManagement_GreetUserClient, error)
 }
 
 type userManagementClient struct {
@@ -42,11 +43,44 @@ func (c *userManagementClient) CreateNewUser(ctx context.Context, in *NewUser, o
 	return out, nil
 }
 
+func (c *userManagementClient) GreetUser(ctx context.Context, in *NewUser, opts ...grpc.CallOption) (UserManagement_GreetUserClient, error) {
+	stream, err := c.cc.NewStream(ctx, &UserManagement_ServiceDesc.Streams[0], "/usermgmt.UserManagement/GreetUser", opts...)
+	if err != nil {
+		return nil, err
+	}
+	x := &userManagementGreetUserClient{stream}
+	if err := x.ClientStream.SendMsg(in); err != nil {
+		return nil, err
+	}
+	if err := x.ClientStream.CloseSend(); err != nil {
+		return nil, err
+	}
+	return x, nil
+}
+
+type UserManagement_GreetUserClient interface {
+	Recv() (*GreetManyTimesResponse, error)
+	grpc.ClientStream
+}
+
+type userManagementGreetUserClient struct {
+	grpc.ClientStream
+}
+
+func (x *userManagementGreetUserClient) Recv() (*GreetManyTimesResponse, error) {
+	m := new(GreetManyTimesResponse)
+	if err := x.ClientStream.RecvMsg(m); err != nil {
+		return nil, err
+	}
+	return m, nil
+}
+
 // UserManagementServer is the server API for UserManagement service.
 // All implementations must embed UnimplementedUserManagementServer
 // for forward compatibility
 type UserManagementServer interface {
 	CreateNewUser(context.Context, *NewUser) (*User, error)
+	GreetUser(*NewUser, UserManagement_GreetUserServer) error
 	mustEmbedUnimplementedUserManagementServer()
 }
 
@@ -56,6 +90,9 @@ type UnimplementedUserManagementServer struct {
 
 func (UnimplementedUserManagementServer) CreateNewUser(context.Context, *NewUser) (*User, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method CreateNewUser not implemented")
+}
+func (UnimplementedUserManagementServer) GreetUser(*NewUser, UserManagement_GreetUserServer) error {
+	return status.Errorf(codes.Unimplemented, "method GreetUser not implemented")
 }
 func (UnimplementedUserManagementServer) mustEmbedUnimplementedUserManagementServer() {}
 
@@ -88,6 +125,27 @@ func _UserManagement_CreateNewUser_Handler(srv interface{}, ctx context.Context,
 	return interceptor(ctx, in, info, handler)
 }
 
+func _UserManagement_GreetUser_Handler(srv interface{}, stream grpc.ServerStream) error {
+	m := new(NewUser)
+	if err := stream.RecvMsg(m); err != nil {
+		return err
+	}
+	return srv.(UserManagementServer).GreetUser(m, &userManagementGreetUserServer{stream})
+}
+
+type UserManagement_GreetUserServer interface {
+	Send(*GreetManyTimesResponse) error
+	grpc.ServerStream
+}
+
+type userManagementGreetUserServer struct {
+	grpc.ServerStream
+}
+
+func (x *userManagementGreetUserServer) Send(m *GreetManyTimesResponse) error {
+	return x.ServerStream.SendMsg(m)
+}
+
 // UserManagement_ServiceDesc is the grpc.ServiceDesc for UserManagement service.
 // It's only intended for direct use with grpc.RegisterService,
 // and not to be introspected or modified (even as a copy)
@@ -100,6 +158,12 @@ var UserManagement_ServiceDesc = grpc.ServiceDesc{
 			Handler:    _UserManagement_CreateNewUser_Handler,
 		},
 	},
-	Streams:  []grpc.StreamDesc{},
+	Streams: []grpc.StreamDesc{
+		{
+			StreamName:    "GreetUser",
+			Handler:       _UserManagement_GreetUser_Handler,
+			ServerStreams: true,
+		},
+	},
 	Metadata: "usermgmt.proto",
 }
