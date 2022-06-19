@@ -23,7 +23,10 @@ const _ = grpc.SupportPackageIsVersion7
 // For semantics around ctx use and closing/ending streaming RPCs, please refer to https://pkg.go.dev/google.golang.org/grpc/?tab=doc#ClientConn.NewStream.
 type UserManagementClient interface {
 	CreateNewUser(ctx context.Context, in *NewUser, opts ...grpc.CallOption) (*User, error)
+	// server streaming
 	GreetUser(ctx context.Context, in *NewUser, opts ...grpc.CallOption) (UserManagement_GreetUserClient, error)
+	// bi-directional streaming
+	CreateMultipleUser(ctx context.Context, opts ...grpc.CallOption) (UserManagement_CreateMultipleUserClient, error)
 }
 
 type userManagementClient struct {
@@ -75,12 +78,46 @@ func (x *userManagementGreetUserClient) Recv() (*GreetManyTimesResponse, error) 
 	return m, nil
 }
 
+func (c *userManagementClient) CreateMultipleUser(ctx context.Context, opts ...grpc.CallOption) (UserManagement_CreateMultipleUserClient, error) {
+	stream, err := c.cc.NewStream(ctx, &UserManagement_ServiceDesc.Streams[1], "/usermgmt.UserManagement/CreateMultipleUser", opts...)
+	if err != nil {
+		return nil, err
+	}
+	x := &userManagementCreateMultipleUserClient{stream}
+	return x, nil
+}
+
+type UserManagement_CreateMultipleUserClient interface {
+	Send(*NewUser) error
+	Recv() (*GreetManyTimesResponse, error)
+	grpc.ClientStream
+}
+
+type userManagementCreateMultipleUserClient struct {
+	grpc.ClientStream
+}
+
+func (x *userManagementCreateMultipleUserClient) Send(m *NewUser) error {
+	return x.ClientStream.SendMsg(m)
+}
+
+func (x *userManagementCreateMultipleUserClient) Recv() (*GreetManyTimesResponse, error) {
+	m := new(GreetManyTimesResponse)
+	if err := x.ClientStream.RecvMsg(m); err != nil {
+		return nil, err
+	}
+	return m, nil
+}
+
 // UserManagementServer is the server API for UserManagement service.
 // All implementations must embed UnimplementedUserManagementServer
 // for forward compatibility
 type UserManagementServer interface {
 	CreateNewUser(context.Context, *NewUser) (*User, error)
+	// server streaming
 	GreetUser(*NewUser, UserManagement_GreetUserServer) error
+	// bi-directional streaming
+	CreateMultipleUser(UserManagement_CreateMultipleUserServer) error
 	mustEmbedUnimplementedUserManagementServer()
 }
 
@@ -93,6 +130,9 @@ func (UnimplementedUserManagementServer) CreateNewUser(context.Context, *NewUser
 }
 func (UnimplementedUserManagementServer) GreetUser(*NewUser, UserManagement_GreetUserServer) error {
 	return status.Errorf(codes.Unimplemented, "method GreetUser not implemented")
+}
+func (UnimplementedUserManagementServer) CreateMultipleUser(UserManagement_CreateMultipleUserServer) error {
+	return status.Errorf(codes.Unimplemented, "method CreateMultipleUser not implemented")
 }
 func (UnimplementedUserManagementServer) mustEmbedUnimplementedUserManagementServer() {}
 
@@ -146,6 +186,32 @@ func (x *userManagementGreetUserServer) Send(m *GreetManyTimesResponse) error {
 	return x.ServerStream.SendMsg(m)
 }
 
+func _UserManagement_CreateMultipleUser_Handler(srv interface{}, stream grpc.ServerStream) error {
+	return srv.(UserManagementServer).CreateMultipleUser(&userManagementCreateMultipleUserServer{stream})
+}
+
+type UserManagement_CreateMultipleUserServer interface {
+	Send(*GreetManyTimesResponse) error
+	Recv() (*NewUser, error)
+	grpc.ServerStream
+}
+
+type userManagementCreateMultipleUserServer struct {
+	grpc.ServerStream
+}
+
+func (x *userManagementCreateMultipleUserServer) Send(m *GreetManyTimesResponse) error {
+	return x.ServerStream.SendMsg(m)
+}
+
+func (x *userManagementCreateMultipleUserServer) Recv() (*NewUser, error) {
+	m := new(NewUser)
+	if err := x.ServerStream.RecvMsg(m); err != nil {
+		return nil, err
+	}
+	return m, nil
+}
+
 // UserManagement_ServiceDesc is the grpc.ServiceDesc for UserManagement service.
 // It's only intended for direct use with grpc.RegisterService,
 // and not to be introspected or modified (even as a copy)
@@ -163,6 +229,12 @@ var UserManagement_ServiceDesc = grpc.ServiceDesc{
 			StreamName:    "GreetUser",
 			Handler:       _UserManagement_GreetUser_Handler,
 			ServerStreams: true,
+		},
+		{
+			StreamName:    "CreateMultipleUser",
+			Handler:       _UserManagement_CreateMultipleUser_Handler,
+			ServerStreams: true,
+			ClientStreams: true,
 		},
 	},
 	Metadata: "usermgmt.proto",

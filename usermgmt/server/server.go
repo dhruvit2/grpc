@@ -8,6 +8,7 @@ import (
 	"log"
 	"strconv"
 	"time"
+	"io"
 
 	pb "github.com/dhruvit2/usermgmt/usermgmt"
 	"google.golang.org/grpc"
@@ -38,6 +39,31 @@ func (u *UserManagementServer) GreetUser(nu *pb.NewUser, stream pb.UserManagemen
 	}
 
 	return nil
+}
+
+func (u *UserManagementServer) CreateMultipleUser(stream pb.UserManagement_CreateMultipleUserServer) error {
+	fmt.Printf("Multiple users \n")
+	for {
+		nu, err := stream.Recv()
+		if err == io.EOF {
+			// read done.
+			return nil
+		}
+
+		if err != nil {
+			return nil
+		}
+		fmt.Printf("Users name %v Age %v \n", nu.GetName(), nu.GetAge())
+		str := "user created name " + nu.GetName() + " age "
+		res := &pb.GreetManyTimesResponse{
+                        Result: str,
+                }
+		err = stream.Send(res)
+		if err != nil {
+			fmt.Printf("err %v \n",err)
+			return err
+		}
+	}
 }
 
 func main() {

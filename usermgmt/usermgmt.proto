@@ -6,7 +6,10 @@ option go_package = "github.com/dhruvit2/usermgmt/usermgmt";
 
 service UserManagement {
 	rpc CreateNewUser(NewUser) returns (User) {}
+	// server streaming
 	rpc GreetUser(NewUser) returns (stream GreetManyTimesResponse) {}
+	// bi-directional streaming
+	rpc CreateMultipleUser(stream NewUser) returns (stream GreetManyTimesResponse) {}
 }
 
 message GreetManyTimesResponse {

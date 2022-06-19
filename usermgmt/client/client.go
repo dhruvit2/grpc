@@ -59,4 +59,34 @@ func main() {
 
 		fmt.Printf("Response from GreetManyTimes: %v\n", msg.GetResult())
 	}
+
+	fmt.Printf("#################### bidirectional streaming ####################\n")
+	newUser["dhr3"] = 334
+
+	stream, err := client.CreateMultipleUser(ctx)
+	if err != nil {
+		log.Fatal("COuld not create user %v \n", err)
+		return
+	}
+
+	for name, age := range newUser {
+
+		err = stream.Send(&pb.NewUser{Name: name, Age:age})
+		if err != nil {
+			log.Printf("Error %v \n", err)
+			return
+		}
+
+		rcvData, err := stream.Recv()
+		if err == io.EOF {
+			break
+		}
+		if err != nil {
+			fmt.Printf("failed to receive data %v \n", err)
+			continue
+		}
+
+		log.Printf("Received data %v\n", rcvData)
+	}
+
 }
